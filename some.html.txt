@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Puzzle Message – "c u in NYC"</title>
+  <!-- TailwindCSS CDN for quick styling -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* minimal custom styling */
+    body {
+      @apply bg-gray-100 text-gray-900 min-h-screen flex flex-col items-center justify-start pt-10;
+    }
+    .puzzle-card {
+      @apply bg-white rounded-2xl shadow-md p-6 w-full max-w-xl mx-auto mb-8;
+    }
+    .revealed-word {
+      @apply inline-block bg-emerald-100 text-emerald-700 font-bold px-3 py-1 rounded-xl mr-2 mb-2;
+    }
+  </style>
+</head>
+<body>
+  <h1 class="text-3xl font-extrabold mb-2">Unlock the Secret Message</h1>
+  <p class="mb-8 text-center max-w-lg">Solve each of the four puzzles below. Every time you answer correctly, you'll
+    reveal the next word (or city!) in the hidden message. Good luck!</p>
+
+  <!-- Puzzle container -->
+  <div id="puzzles" class="w-full flex flex-col items-center"></div>
+
+  <!-- Revealed message area -->
+  <div id="messageContainer" class="my-10 text-center"></div>
+
+  <script>
+    const puzzles = [
+      {
+        id: 1,
+        question: "Puzzle 1: What is the first letter of the programming language created by Dennis Ritchie?",
+        answer: "c",
+        reveal: "c"
+      },
+      {
+        id: 2,
+        question: "Puzzle 2: In texting slang, which single letter commonly stands for the word 'you'?",
+        answer: "u",
+        reveal: "u"
+      },
+      {
+        id: 3,
+        question: "Puzzle 3: Which two‑letter English preposition means being enclosed or located within something (e.g., 'stay ___ school')?",
+        answer: "in",
+        reveal: "in"
+      },
+      {
+        id: 4,
+        question: "Puzzle 4: Which U.S. city is famously nicknamed the ‘Big Apple’? (Answer with its three‑letter abbreviation)",
+        answer: "nyc",
+        reveal: "NYC"
+      }
+    ];
+
+    const solved = new Array(puzzles.length).fill(false);
+    const puzzleContainer = document.getElementById("puzzles");
+    const messageContainer = document.getElementById("messageContainer");
+
+    function renderPuzzles() {
+      puzzles.forEach((puz, index) => {
+        const card = document.createElement("div");
+        card.className = "puzzle-card";
+
+        const q = document.createElement("p");
+        q.className = "mb-4 font-medium";
+        q.textContent = puz.question;
+
+        const input = document.createElement("input");
+        input.type = "text";
+        input.placeholder = "Your answer";
+        input.className = "border rounded-xl px-3 py-2 w-full mb-4";
+
+        const btn = document.createElement("button");
+        btn.textContent = "Submit";
+        btn.className = "bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-xl transition";
+
+        const feedback = document.createElement("p");
+        feedback.className = "mt-3 text-sm font-semibold";
+
+        btn.addEventListener("click", () => {
+          const userAnswer = input.value.trim().toLowerCase();
+          if (userAnswer === puz.answer) {
+            if (!solved[index]) {
+              solved[index] = true;
+              feedback.textContent = `Correct! You unlocked: "${puz.reveal}"`;
+              feedback.classList.add("text-emerald-600");
+              revealMessage();
+            }
+          } else {
+            feedback.textContent = "Hmm… that's not it. Try again!";
+            feedback.classList.remove("text-emerald-600");
+            feedback.classList.add("text-red-600");
+          }
+        });
+
+        card.appendChild(q);
+        card.appendChild(input);
+        card.appendChild(btn);
+        card.appendChild(feedback);
+        puzzleContainer.appendChild(card);
+      });
+    }
+
+    function revealMessage() {
+      messageContainer.innerHTML = "";
+      solved.forEach((isSolved, idx) => {
+        if (isSolved) {
+          const span = document.createElement("span");
+          span.className = "revealed-word";
+          span.textContent = puzzles[idx].reveal;
+          messageContainer.appendChild(span);
+        }
+      });
+
+      // when all solved, celebrate!
+      if (solved.every(Boolean)) {
+        const doneMsg = document.createElement("p");
+        doneMsg.className = "mt-6 text-2xl font-extrabold text-blue-700 animate-bounce";
+        doneMsg.textContent = "🎉 You uncovered the full secret message! 🎉";
+        messageContainer.appendChild(doneMsg);
+      }
+    }
+
+    // initial render
+    renderPuzzles();
+  </script>
+</body>
+</html>

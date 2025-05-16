@@ -1,0 +1,10 @@
+// jsconfig.json  (create this in C:\Users\Ani Chinta\Documents\Hackathon\somethign)
+{
+    "compilerOptions": {
+      "baseUrl": ".",
+      "paths": {
+        "@/*": ["src/*"]
+      }
+    }
+  }
+  
