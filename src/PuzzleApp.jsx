@@ -12,23 +12,11 @@ import { Input } from "@/components/ui/input";
 import { motion, AnimatePresence } from "framer-motion";
 import { Key } from "lucide-react";
 import Background from "@/assets/riyabday.jpg";
-import SecretImg from "@/assets/secrets.jpg"; // place screenshot as src/assets/secret.png
+import SecretImg from "@/assets/secrets.jpg";
 
-// ─── Constants ─────────────────────────────────────────────────────────────
+// ─── Utility helpers ───────────────────────────────────────────────────────
 
-const TARGET_LETTERS = ["C", "U", "I", "N", "N", "Y", "C"];
-
-const PUZZLES = [
-  { letter: "C", question: "Quel est la premiere lettre du langage de programmation cree par Dennis Ritchie ?" },
-  { letter: "U", question: "¿Que letra representa la palabra 'tu' en la jerga de mensajes de texto?" },
-  { letter: "I", question: "Welcher einzelne Buchstabe beginnt das englische Wort 'in'?" },
-  { letter: "N", question: "アルファベットの14番目の文字は何ですか?" },
-  { letter: "N", question: "अंग्रेजी वर्णमाला का चौदहवां अक्षर कौन सा है?" },
-  { letter: "Y", question: "Quale lettera segue la X nell'alfabeto inglese?" },
-  { letter: "C", question: "Qual e la terza lettera della parola 'code'?" },
-];
-
-// ─── Helpers ───────────────────────────────────────────────────────────────
+const normalize = (str) => str.toLowerCase().replace(/[^a-z0-9]/g, "");
 
 function shuffle(arr) {
   const copy = [...arr];
@@ -39,16 +27,68 @@ function shuffle(arr) {
   return copy;
 }
 
-// ─── Letter Box ────────────────────────────────────────────────────────────
+// ─── Target phrase & puzzle definitions─────────────────────────────────────
+
+const TARGET_LETTERS = ["S", "E", "E", "U", "I", "N", "N", "Y", "C"];
+
+const PUZZLES = [
+  {
+    prompt: "Ani originally bought the digi camera to take ____ pictures.",
+    accepts: ["sunset", "sun set"],
+    letter: "S",
+  },
+  {
+    prompt: "The speed I got pulled over for.",
+    accepts: ["eightyseven", "87", "eighty seven"],
+    letter: "E",
+  },
+  {
+    prompt: "Fri, July 19 1:59 AM – what referral?",
+    accepts: ["swe", "software", "softwareengineering"],
+    letter: "E", // take the E from SWE
+  },
+  {
+    prompt: "We couldn't find one after Coco Bongo.",
+    accepts: ["anuber", "uber"],
+    letter: "U",
+  },
+  {
+    prompt: "First date location?",
+    accepts: ["inorbit", "in orbit"],
+    letter: "I",
+  },
+  {
+    prompt: "Shirt I wore to bed when I first met you in Raleigh.",
+    accepts: ["ncstate", "nc state", "ncsu"],
+    letter: "N",
+  },
+  {
+    prompt: "Our first Hilton city.",
+    accepts: ["newyork", "nyc", "new york"],
+    letter: "N",
+  },
+  {
+    prompt: "I hated when you typed this word because it sounded like a white‑girl 'yes'.",
+    accepts: ["yaur", "yaurrr"],
+    letter: "Y",
+  },
+  {
+    prompt: "Wake Forest, NC 27587 – ?",
+    accepts: ["corvette"],
+    letter: "C",
+  },
+];
+
+// ─── Letter box component ──────────────────────────────────────────────────
 
 function LetterBox({ letter, solved, wrong, onClick }) {
-  const border = solved ? "border-emerald-500" : wrong ? "border-red-500" : "border-gray-400";
+  const border = solved ? "border-emerald-500" : wrong ? "border-red-500" : "border-gray-300";
   return (
     <motion.button
       layout
       whileHover={{ scale: solved ? 1 : 1.05 }}
       whileTap={{ scale: 0.97 }}
-      className={`flex items-center justify-center w-14 h-14 md:w-16 md:h-16 text-2xl font-semibold rounded-xl border-2 ${border} bg-white/80 backdrop-blur-sm shadow-md transition`}
+      className={`flex items-center justify-center w-14 h-14 text-2xl font-semibold rounded-xl border-2 ${border} bg-white/80 backdrop-blur-sm shadow-md transition`}
       onClick={onClick}
     >
       {solved ? letter : ""}
@@ -56,18 +96,20 @@ function LetterBox({ letter, solved, wrong, onClick }) {
   );
 }
 
-// ─── Main App ───────────────────────────────────────────────────────────────
+// ─── Main component ────────────────────────────────────────────────────────
 
 export default function PuzzleApp() {
-  const initialOrder = useMemo(() => shuffle([0, 1, 2, 3, 4, 5, 6]), []);
+  // shuffle display order once per mount
+  const initialOrder = useMemo(() => shuffle([...Array(9).keys()]), []);
   const [order, setOrder] = useState(initialOrder);
-  const [solved, setSolved] = useState(Array(7).fill(false));
-  const [wrong, setWrong] = useState(Array(7).fill(false));
+
+  const [solved, setSolved] = useState(Array(9).fill(false));
+  const [wrong, setWrong] = useState(Array(9).fill(false));
   const [active, setActive] = useState(null);
   const [input, setInput] = useState("");
   const [showSecret, setShowSecret] = useState(false);
 
-  // open dialog
+  // open puzzle
   const open = (idx) => {
     setActive(idx);
     setInput("");
@@ -76,12 +118,13 @@ export default function PuzzleApp() {
 
   const close = () => setActive(null);
 
-  // handle answer
   const submit = () => {
     if (active === null) return;
-    const correct = TARGET_LETTERS[order[active]].toLowerCase();
-    const guess = input.trim().toLowerCase();
-    if (guess === correct) {
+    const puzzle = PUZZLES[order[active]];
+    const norm = normalize(input);
+    const correct = puzzle.accepts.some((ans) => norm === normalize(ans));
+
+    if (correct) {
       setSolved((s) => s.map((v, i) => (i === active ? true : v)));
       close();
     } else {
@@ -91,56 +134,38 @@ export default function PuzzleApp() {
 
   const allSolved = solved.every(Boolean);
 
-  // rearrange boxes & schedule redirect when solved
+  // rearrange + redirect when solved
   useEffect(() => {
     if (allSolved) {
-      // rearrange after 0.4s for effect
-      const reOrderTimeout = setTimeout(() => setOrder([0, 1, 2, 3, 4, 5, 6]), 400);
-      // redirect / show secret after 5s
-      const secretTimeout = setTimeout(() => setShowSecret(true), 5000);
+      const reorder = setTimeout(() => setOrder([...Array(9).keys()]), 400);
+      const redirect = setTimeout(() => setShowSecret(true), 10000); // 10 s
       return () => {
-        clearTimeout(reOrderTimeout);
-        clearTimeout(secretTimeout);
+        clearTimeout(reorder);
+        clearTimeout(redirect);
       };
     }
   }, [allSolved]);
 
-  // ─── Render Secret Screen ──────────────────────────────────────────────
+  // ── render secret screen ───────────────────────────────────────────────
   if (showSecret) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-black">
-        <img
-          src={SecretImg}
-          alt="secret"
-          className="max-w-full max-h-screen object-contain"
-        />
+        <img src={SecretImg} alt="secret" className="max-w-full max-h-screen object-contain" />
       </div>
     );
   }
 
-  // ─── Main Puzzle Screen ───────────────────────────────────────────────
+  // ── render puzzle screen ───────────────────────────────────────────────
   return (
-    <div
-      className="min-h-screen flex items-center justify-center bg-cover bg-center"
-      style={{ backgroundImage: `url(${Background})` }}
-    >
-      {/* overlay */}
+    <div className="min-h-screen flex items-center justify-center bg-cover bg-center" style={{ backgroundImage: `url(${Background})` }}>
       <div className="absolute inset-0 bg-sky-100/60 backdrop-blur-[2px]" />
 
       <motion.div className="relative z-10 flex flex-col items-center">
-        <motion.h1
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-3xl md:text-4xl font-extrabold text-indigo-700 mb-8 flex items-center gap-3 drop-shadow"
-        >
+        <motion.h1 initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="text-3xl md:text-4xl font-extrabold text-indigo-700 mb-8 flex items-center gap-3 drop-shadow">
           <Key className="w-8 h-8" /> Unlock the Secret Message
         </motion.h1>
 
-        <motion.div
-          layout
-          className="grid grid-cols-7 gap-4 mb-8"
-          transition={{ layout: { duration: 0.6, type: "spring" } }}
-        >
+        <motion.div layout className="grid grid-cols-9 gap-4 mb-8" transition={{ layout: { duration: 0.6, type: "spring" } }}>
           {order.map((origIdx, dispIdx) => (
             <LetterBox
               key={dispIdx}
@@ -154,19 +179,14 @@ export default function PuzzleApp() {
 
         <AnimatePresence>
           {allSolved && (
-            <motion.p
-              initial={{ scale: 0, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0, opacity: 0 }}
-              className="text-2xl font-extrabold text-emerald-600 animate-pulse drop-shadow"
-            >
-               HMMMMMMMMM 
+            <motion.p initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0, opacity: 0 }} className="text-2xl font-extrabold text-emerald-600 animate-pulse drop-shadow">
+              
             </motion.p>
           )}
         </AnimatePresence>
       </motion.div>
 
-      {/* Dialog */}
+      {/* dialog */}
       <Dialog open={active !== null} onOpenChange={close}>
         <DialogTrigger asChild></DialogTrigger>
         <DialogContent className="sm:max-w-md">
@@ -175,20 +195,12 @@ export default function PuzzleApp() {
               <DialogHeader>
                 <DialogTitle>Puzzle {active + 1}</DialogTitle>
                 <DialogDescription className="mb-4">
-                  {PUZZLES[order[active]].question}
+                  {PUZZLES[order[active]].prompt}
                 </DialogDescription>
               </DialogHeader>
-              <Input
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                placeholder="Enter one letter"
-                maxLength={1}
-                className="mb-4"
-              />
+              <Input value={input} onChange={(e) => setInput(e.target.value)} placeholder="Type answer" className="mb-4" />
               <div className="flex justify-end gap-2">
-                <Button variant="secondary" onClick={close}>
-                  Cancel
-                </Button>
+                <Button variant="secondary" onClick={close}>Cancel</Button>
                 <Button onClick={submit}>Submit</Button>
               </div>
             </>
